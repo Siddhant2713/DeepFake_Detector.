@@ -42,3 +42,9 @@ async def analyze_video(file: UploadFile = File(...)):
         # Cleanup
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
+from fastapi.staticfiles import StaticFiles
+
+# Serve React Frontend (Must be after API routes)
+# In Docker, we are at /app, and static files are at /app/backend/static
+app.mount("/", StaticFiles(directory="backend/static", html=True), name="static")

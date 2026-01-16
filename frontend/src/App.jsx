@@ -16,10 +16,11 @@ function App() {
   const handleDrop = (e) => {
     e.preventDefault()
     const droppedFile = e.dataTransfer.files[0]
-    if (droppedFile && droppedFile.type.startsWith('video/')) {
-      setFile(droppedFile)
-      // Simulate upload/analysis for now (Phase 3 Mock)
-      startAnalysis(droppedFile)
+    if (droppedFile) {
+      if (droppedFile.type.startsWith('video/') || droppedFile.type.startsWith('image/')) {
+        setFile(droppedFile)
+        startAnalysis(droppedFile)
+      }
     }
   }
 
@@ -30,19 +31,20 @@ function App() {
     const formData = new FormData()
     formData.append('file', selectedFile)
 
+    const isImage = selectedFile.type.startsWith('image/')
+    const endpoint = isImage ? '/api/analyze/image' : '/api/analyze'
+
     try {
       setProgress(30)
-      const response = await axios.post(`${API_URL}/api/analyze`, formData, {
+      const response = await axios.post(`${API_URL}${endpoint}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          // Cap upload progress at 60%, rest is processing
           setProgress(Math.min(60, percentCompleted));
         }
       })
 
       setProgress(80)
-      // Simulate a small delay for "Processing" perception if it's too fast
       setTimeout(() => {
         setResult(response.data)
         setProgress(100)
@@ -57,6 +59,7 @@ function App() {
     }
   }
 
+  // ... (Keep handleTimeUpdate, handleLoadedMetadata as is) ...
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime)
@@ -104,7 +107,7 @@ function App() {
               type="file"
               id="fileInput"
               className="hidden"
-              accept="video/*"
+              accept="video/*,image/*"
               onChange={(e) => {
                 if (e.target.files[0]) {
                   setFile(e.target.files[0])
@@ -115,8 +118,8 @@ function App() {
             <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
               <Upload size={32} className="text-slate-400 group-hover:text-red-400" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Drop Video Evidence Here</h2>
-            <p className="text-slate-400">or Click to Browse (MP4, AVI, MOV)</p>
+            <h2 className="text-2xl font-bold mb-2">Drop Evidence Here</h2>
+            <p className="text-slate-400">Video (MP4, AVI) or Image (JPG, PNG)</p>
           </div>
         )}
 
@@ -124,7 +127,7 @@ function App() {
         {(status === 'uploading' || status === 'analyzing') && (
           <div className="max-w-md mx-auto mt-20 text-center">
             <div className="mb-4 flex justify-between text-sm">
-              <span className="text-slate-300">Analyzing Temporal Artifacts...</span>
+              <span className="text-slate-300">Analyzing Artifacts...</span>
               <span className="text-red-400 font-mono">{progress}%</span>
             </div>
             <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -139,42 +142,47 @@ function App() {
         {/* Main Dashboard (Result) */}
         {status === 'complete' && result && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left: Video Player */}
+            {/* Left: Player OR Image Preview */}
             <div className="lg:col-span-2">
               <div className="bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-800 relative">
-                {file && (
-                  <video
-                    ref={videoRef}
-                    src={URL.createObjectURL(file)}
-                    className="w-full aspect-video"
-                    controls={false} // Custom controls later if needed, strictly system controls for now
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleLoadedMetadata}
-                  />
+                {file && file.type.startsWith('video/') ? (
+                  <>
+                    <video
+                      ref={videoRef}
+                      src={URL.createObjectURL(file)}
+                      className="w-full aspect-video"
+                      controls={false}
+                      onTimeUpdate={handleTimeUpdate}
+                      onLoadedMetadata={handleLoadedMetadata}
+                    />
+                    <div className="absolute bottom-4 left-4 right-4 flex justify-center">
+                      <button
+                        className="bg-white/10 backdrop-blur hover:bg-white/20 p-3 rounded-full text-white"
+                        onClick={() => videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause()}
+                      >
+                        <Play fill="currentColor" size={20} />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <img src={URL.createObjectURL(file)} className="w-full object-contain max-h-[500px]" alt="Evidence" />
                 )}
-                {/* Overlay Play Button if paused could go here */}
-                <div className="absolute bottom-4 left-4 right-4 flex justify-center">
-                  <button
-                    className="bg-white/10 backdrop-blur hover:bg-white/20 p-3 rounded-full text-white"
-                    onClick={() => videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause()}
-                  >
-                    <Play fill="currentColor" size={20} />
-                  </button>
-                </div>
               </div>
 
-              {/* The Temporal Timeline */}
-              <TimeLine
-                duration={duration || 10} // fallback to 10s if duration fails
-                currentTime={currentTime}
-                segments={result.manipulated_segments}
-                onSeek={(time) => {
-                  if (videoRef.current) {
-                    videoRef.current.currentTime = time;
-                    videoRef.current.play(); // Auto play on seek
-                  }
-                }}
-              />
+              {/* Timeline only for videos */}
+              {file && file.type.startsWith('video/') && (
+                <TimeLine
+                  duration={duration || 10}
+                  currentTime={currentTime}
+                  segments={result.manipulated_segments}
+                  onSeek={(time) => {
+                    if (videoRef.current) {
+                      videoRef.current.currentTime = time;
+                      videoRef.current.play();
+                    }
+                  }}
+                />
+              )}
             </div>
 
             {/* Right: Analysis Report */}
@@ -193,56 +201,58 @@ function App() {
                 <div className="text-xs uppercase tracking-widest text-slate-500">Confidence Score</div>
               </div>
 
-              {/* Segment List */}
-              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                <h3 className="font-bold mb-4 flex items-center gap-2">
-                  <FileVideo size={18} className="text-slate-400" />
-                  <span>Forensic Log</span>
-                </h3>
-                <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                  {result.manipulated_segments.map((seg, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between p-3 bg-slate-900 rounded border border-slate-800 hover:border-red-500/30 cursor-pointer group transition-colors"
-                      onClick={() => {
-                        // Quick Jump
-                        const parts = seg.start_time.split(':').map(Number);
-                        const time = parts[0] * 3600 + parts[1] * 60 + parts[2];
-                        if (videoRef.current) {
-                          videoRef.current.currentTime = time;
-                          videoRef.current.play();
-                        }
-                      }}
-                    >
-                      <div>
-                        <div className="font-mono text-red-400 text-sm group-hover:text-red-300">
-                          {seg.start_time} - {seg.end_time}
+              {/* Segment List (Only for Videos) */}
+              {file && file.type.startsWith('video/') && (
+                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                  <h3 className="font-bold mb-4 flex items-center gap-2">
+                    <FileVideo size={18} className="text-slate-400" />
+                    <span>Forensic Log</span>
+                  </h3>
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                    {result.manipulated_segments.map((seg, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-3 bg-slate-900 rounded border border-slate-800 hover:border-red-500/30 cursor-pointer group transition-colors"
+                        onClick={() => {
+                          const parts = seg.start_time.split(':').map(Number);
+                          const time = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                          if (videoRef.current) {
+                            videoRef.current.currentTime = time;
+                            videoRef.current.play();
+                          }
+                        }}
+                      >
+                        <div>
+                          <div className="font-mono text-red-400 text-sm group-hover:text-red-300">
+                            {seg.start_time} - {seg.end_time}
+                          </div>
+                          <div className="text-xs text-slate-500">Segment #{i + 1}</div>
                         </div>
-                        <div className="text-xs text-slate-500">Segment #{i + 1}</div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-slate-300">{(seg.confidence * 100).toFixed(0)}%</div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-slate-300">{(seg.confidence * 100).toFixed(0)}%</div>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-                {/* Export Button */}
-                <button
-                  className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl border border-slate-700 transition-colors flex items-center justify-center gap-2 mt-6"
-                  onClick={() => {
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
-                    const downloadAnchorNode = document.createElement('a');
-                    downloadAnchorNode.setAttribute("href", dataStr);
-                    downloadAnchorNode.setAttribute("download", "forensic_report.json");
-                    document.body.appendChild(downloadAnchorNode); // required for firefox
-                    downloadAnchorNode.click();
-                    downloadAnchorNode.remove();
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
-                  Export Forensic Report (JSON)
-                </button>
-              </div>
+              )}
+
+              {/* Export Button */}
+              <button
+                className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl border border-slate-700 transition-colors flex items-center justify-center gap-2 mt-6"
+                onClick={() => {
+                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
+                  const downloadAnchorNode = document.createElement('a');
+                  downloadAnchorNode.setAttribute("href", dataStr);
+                  downloadAnchorNode.setAttribute("download", "forensic_report.json");
+                  document.body.appendChild(downloadAnchorNode);
+                  downloadAnchorNode.click();
+                  downloadAnchorNode.remove();
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+                Export Forensic Report (JSON)
+              </button>
             </div>
           </div>
         )}

@@ -43,6 +43,22 @@ async def analyze_video(file: UploadFile = File(...)):
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
+@app.post("/api/analyze/image", response_model=DeepfakeResponse)
+async def analyze_image(file: UploadFile = File(...)):
+    temp_dir = "temp_uploads"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, file.filename)
+    
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    try:
+        result = orchestrator.process_image(temp_path)
+        return result
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
 from fastapi.staticfiles import StaticFiles
 
 # Serve React Frontend (Must be after API routes)

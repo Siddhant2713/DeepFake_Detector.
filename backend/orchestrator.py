@@ -39,3 +39,18 @@ class Orchestrator:
             overall_confidence=max_conf,
             manipulated_segments=segments
         )
+
+    def process_image(self, image_path: str) -> DeepfakeResponse:
+        """
+        Simple pipeline for single image.
+        """
+        # Expert Prediction
+        score = self.expert.predict_image(image_path)
+        is_fake = score > 0.5
+        
+        return DeepfakeResponse(
+            input_type="image",
+            video_is_fake=is_fake,
+            overall_confidence=score,
+            manipulated_segments=[] # No time segments for an image
+        )

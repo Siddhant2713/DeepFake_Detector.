@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import axios from 'axios'
-import { API_URL } from './config'
-import TimeLine from './components/Timeline'
+import { API_URL } from './config.js'
+import TimeLine from './components/Timeline.jsx'
 import { Upload, AlertTriangle, CheckCircle, FileVideo, Play, Pause } from 'lucide-react'
 
 function App() {

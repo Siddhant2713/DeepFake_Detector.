@@ -17,12 +17,28 @@ app.add_middleware(
 def health_check():
     return {"status": "ok"}
 
+import shutil
+import os
+from backend.orchestrator import Orchestrator
+
+# Initialize Orchestrator once
+orchestrator = Orchestrator()
+
 @app.post("/api/analyze", response_model=DeepfakeResponse)
 async def analyze_video(file: UploadFile = File(...)):
-    # Mock response for now to satisfy TC-2.3 later
-    return {
-        "input_type": "video",
-        "video_is_fake": False,
-        "overall_confidence": 0.0,
-        "manipulated_segments": []
-    }
+    # Save Uploaded File
+    temp_dir = "temp_uploads"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, file.filename)
+    
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # Run Analysis
+    try:
+        result = orchestrator.process_video(temp_path)
+        return result
+    finally:
+        # Cleanup
+        if os.path.exists(temp_path):
+            os.remove(temp_path)

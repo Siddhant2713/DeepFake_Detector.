@@ -8,73 +8,77 @@ import os
 
 class RealExpert:
     def __init__(self):
-        # 1. Load AI Model
-        print("🔄 Initializing RealExpert: Downloading/Loading Model...")
-        self.model_name = "prithivMLmods/Deep-Fake-Detector-v2-Model"
-        self.device = torch.device("cpu")
-        
-        self.processor = AutoImageProcessor.from_pretrained(self.model_name)
-        self.model = AutoModelForImageClassification.from_pretrained(self.model_name)
-        self.model.to(self.device)
-        self.model.eval()
-        
-        # 2. Dynamic Label Mapping
-        self.id2label = self.model.config.id2label
-        self.fake_idx = 1
-        self.real_idx = 0
-        
-        for idx, label in self.id2label.items():
-            label_clean = label.lower()
-            if "fake" in label_clean or "manipulated" in label_clean:
-                self.fake_idx = int(idx)
-            elif "real" in label_clean or "original" in label_clean:
-                self.real_idx = int(idx)
-
-        # 3. Setup Face Detector (Haar Cascade)
-        # We use the built-in OpenCV path or a local file if needed.
-        # cv2.data.haarcascades acts as a finder for the xml files.
         try:
-            self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-            if self.face_cascade.empty():
-                raise IOError("Failed to load Haar Cascade XML")
-            print("👤 Face Detector Loaded Successfully!")
-        except Exception as e:
-            print(f"⚠️ Warning: Face detector failed to load ({e}). Using full frame.")
-            self.face_cascade = None
+            print("🚀 Starting RealExpert Initialization...")
+            
+            # 1. Load AI Model
+            print("⬇️ Downloading/Loading Transformer Model...")
+            self.model_name = "prithivMLmods/Deep-Fake-Detector-v2-Model"
+            self.device = torch.device("cpu")
+            
+            self.processor = AutoImageProcessor.from_pretrained(self.model_name)
+            self.model = AutoModelForImageClassification.from_pretrained(self.model_name)
+            self.model.to(self.device)
+            self.model.eval()
+            print("✅ Transformer Model Loaded.")
 
-        print("✅ RealExpert Ready!")
+            # 2. Dynamic Label Mapping
+            self.id2label = self.model.config.id2label
+            self.fake_idx = 1
+            self.real_idx = 0
+            
+            for idx, label in self.id2label.items():
+                label_clean = label.lower()
+                if "fake" in label_clean or "manipulated" in label_clean:
+                    self.fake_idx = int(idx)
+                elif "real" in label_clean or "original" in label_clean:
+                    self.real_idx = int(idx)
+            print(f"🏷️ Labels: Fake={self.fake_idx}, Real={self.real_idx}")
+
+            # 3. Setup Face Detector
+            print("👤 Loading Face Detector...")
+            # Use explicit local path if system path fails
+            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            print(f"📂 Looking for cascade at: {cascade_path}")
+            
+            if not os.path.exists(cascade_path):
+                print(f"❌ Cascade XML file NOT found at {cascade_path}")
+                # Fallback: Don't crash, just disable face detection
+                self.face_cascade = None
+            else:
+                self.face_cascade = cv2.CascadeClassifier(cascade_path)
+                if self.face_cascade.empty():
+                    print("❌ Failed to load CascadeClassifier (Empty).")
+                    self.face_cascade = None
+                else:
+                    print("✅ Face Detector Loaded.")
+
+        except Exception as e:
+            print(f"🔥 CRITICAL ERROR in RealExpert.__init__: {e}")
+            raise e # Re-raise to see it in logs
 
     def extract_face(self, image_path: str) -> Image.Image:
-        """
-        Detects and crops the largest face from the image.
-        Returns the cropped PIL Image. 
-        If no face found, returns the original image (fallback).
-        """
         try:
             if self.face_cascade is None:
                 return Image.open(image_path).convert("RGB")
 
-            # SAFE LOADING: Use PIL then convert to OpenCV
-            # This avoids cv2.imread() issues with paths/libraries in Docker
+            # Load with PIL first (Safe)
             pil_img = Image.open(image_path).convert("RGB")
+            # Convert to numpy (OpenCV format)
             cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-            
-            if cv_img is None:
-                print(f"⚠️ Failed to convert image: {image_path}")
-                return pil_img # Return full frame
             
             gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
             faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
 
             if len(faces) == 0:
-                print(f"⚠️ No face detected in {os.path.basename(image_path)}, using full frame.")
-                return Image.open(image_path).convert("RGB")
+                print(f"⚠️ No detected face. Using full frame.")
+                return pil_img
 
             # Find largest face
             largest_face = max(faces, key=lambda rect: rect[2] * rect[3])
             x, y, w, h = largest_face
             
-            # Add a small margin (padding)
+            # Add a small margin
             margin = int(w * 0.1)
             x = max(0, x - margin)
             y = max(0, y - margin)
@@ -84,12 +88,11 @@ class RealExpert:
             # Crop
             face_img = cv_img[y:y+h, x:x+w]
             
-            # Convert back to PIL for Transformers
-            face_rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
-            return Image.fromarray(face_rgb)
+            # Convert back to PIL
+            return Image.fromarray(cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB))
 
         except Exception as e:
-            print(f"⚠️ Face extraction error: {e}")
+            print(f"⚠️ Face Logic Error: {e}. Fallback to full frame.")
             return Image.open(image_path).convert("RGB")
 
     def predict_image(self, image_path: str) -> float:

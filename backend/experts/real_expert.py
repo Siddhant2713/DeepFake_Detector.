@@ -120,3 +120,14 @@ class RealExpert:
         except Exception as e:
             print(f"❌ Error predicting image {image_path}: {e}")
             return 0.5
+
+    def predict_frames(self, frame_paths: List[str]) -> List[float]:
+        """
+        Batch prediction for a list of video frames.
+        """
+        scores = []
+        # Process one by one for CPU safety (Batching on CPU can freeze Docker)
+        for path in frame_paths:
+            score = self.predict_image(path)
+            scores.append(score)
+        return scores

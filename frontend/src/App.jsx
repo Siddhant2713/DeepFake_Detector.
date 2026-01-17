@@ -92,8 +92,8 @@ function App() {
 
         {/* HEADER */}
         <header className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-text-primary">DeepForged Forensics</h1>
-          <p className="text-text-secondary text-sm">Temporal Localization Engine v2.0</p>
+          <h1 className="text-2xl font-semibold text-text-primary">DeepForged Forensics <span className="text-xs text-text-secondary font-normal ml-2">v2.1 (Strict)</span></h1>
+          <p className="text-text-secondary text-sm">Temporal Localization Engine</p>
         </header>
 
         {/* UPLOAD CARD */}

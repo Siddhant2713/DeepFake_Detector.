@@ -1,9 +1,9 @@
 # Stage 1: Build React Frontend
 FROM node:20-alpine AS frontend-builder
+RUN echo "CACHEBUST_TRIGGER: 2026-01-17 16:30"
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
-# CACHEBUST_FRONTEND: 2026-01-17 16:25
 COPY frontend/ .
 RUN npm run build
 

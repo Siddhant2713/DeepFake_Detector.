@@ -1,6 +1,6 @@
 # Stage 1: Build React Frontend
 FROM node:20-alpine AS frontend-builder
-RUN echo "CACHEBUST_TRIGGER: 2026-01-17 16:30"
+RUN echo "CACHEBUST_TRIGGER: 2026-01-17 v2.2 Forensic UX"
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install

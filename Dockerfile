@@ -7,7 +7,9 @@ COPY frontend/ .
 RUN npm run build
 
 # Stage 2: Python Backend & Final Image
-FROM python:3.9-slim
+# Stage 2: Python Backend & Final Image
+# UPGRADE: 3.10-slim forces a full cache reset
+FROM python:3.10-slim
 
 # Install system dependencies
 # ffmpeg for video processing

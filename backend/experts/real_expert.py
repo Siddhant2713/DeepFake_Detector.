@@ -54,10 +54,14 @@ class RealExpert:
             if self.face_cascade is None:
                 return Image.open(image_path).convert("RGB")
 
-            # Read with OpenCV for detection
-            cv_img = cv2.imread(image_path)
+            # SAFE LOADING: Use PIL then convert to OpenCV
+            # This avoids cv2.imread() issues with paths/libraries in Docker
+            pil_img = Image.open(image_path).convert("RGB")
+            cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+            
             if cv_img is None:
-                return Image.open(image_path).convert("RGB")
+                print(f"⚠️ Failed to convert image: {image_path}")
+                return pil_img # Return full frame
             
             gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
             faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)

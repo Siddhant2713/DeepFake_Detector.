@@ -7,8 +7,9 @@ from backend.schemas import DeepfakeResponse, Segment
 
 class Orchestrator:
     def __init__(self):
-        self.frame_extractor = FrameExtractor(fps=5)
-        self.aggregator = TemporalAggregator(fps=5, threshold=0.5)
+        # OPTIMIZATION: Reduced to 1 FPS for Hugging Face Free Tier (CPU)
+        self.frame_extractor = FrameExtractor(fps=1)
+        self.aggregator = TemporalAggregator(fps=1, threshold=0.5)
         self.expert = RealExpert()
 
     def process_video(self, video_path: str) -> DeepfakeResponse:

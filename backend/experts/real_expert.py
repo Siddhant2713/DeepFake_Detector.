@@ -17,6 +17,24 @@ class RealExpert:
         self.model = AutoModelForImageClassification.from_pretrained(self.model_name)
         self.model.to(self.device)
         self.model.eval()
+        
+        # DYNAMIC LABEL MAPPING
+        # We check what the model calls its classes to find the "Fake" index
+        self.id2label = self.model.config.id2label
+        self.fake_idx = 1 # Default
+        self.real_idx = 0
+        
+        print(f"🏷️ Model Labels: {self.id2label}")
+        
+        # Smart detection of label indices
+        for idx, label in self.id2label.items():
+            label_clean = label.lower()
+            if "fake" in label_clean or "manipulated" in label_clean:
+                self.fake_idx = int(idx)
+            elif "real" in label_clean or "original" in label_clean:
+                self.real_idx = int(idx)
+                
+        print(f"🎯 Configuration: Real={self.real_idx}, Fake={self.fake_idx}")
         print("✅ Model Loaded Successfully!")
 
     def predict_image(self, image_path: str) -> float:
@@ -33,10 +51,11 @@ class RealExpert:
                 logits = outputs.logits
                 probabilities = torch.softmax(logits, dim=1)
                 
-            # Assuming class 1 is "Fake" and class 0 is "Real" (Check model card usually)
-            # For this specific model, we need to verify label mapping. 
-            # Most generic detectors: 0=Real, 1=Fake.
-            fake_prob = probabilities[0][1].item()
+            # Use dynamic index
+            fake_prob = probabilities[0][self.fake_idx].item()
+            real_prob = probabilities[0][self.real_idx].item()
+            
+            print(f"🔍 Analysis: Fake Prob={fake_prob:.4f}, Real Prob={real_prob:.4f} -> Result={fake_prob}")
             return fake_prob
         except Exception as e:
             print(f"❌ Error predicting image {image_path}: {e}")

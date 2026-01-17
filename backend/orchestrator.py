@@ -2,14 +2,14 @@ from typing import List, Dict
 import os
 from backend.processing.frames import FrameExtractor
 from backend.processing.temporal import TemporalAggregator
-from backend.experts.mock import MockExpert
+from backend.experts.real_expert import RealExpert
 from backend.schemas import DeepfakeResponse, Segment
 
 class Orchestrator:
     def __init__(self):
         self.frame_extractor = FrameExtractor(fps=5)
         self.aggregator = TemporalAggregator(fps=5, threshold=0.5)
-        self.expert = MockExpert()
+        self.expert = RealExpert()
 
     def process_video(self, video_path: str) -> DeepfakeResponse:
         """

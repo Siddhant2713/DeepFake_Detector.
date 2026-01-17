@@ -14,7 +14,7 @@ FROM python:3.10-slim
 # Install system dependencies
 # ffmpeg for video processing
 # libgl1-mesa-glx for OpenCV
-# CACHEBUST: 2026-01-17 15:30
+# CACHEBUST: 2026-01-17 15:40
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsm6 \

@@ -4,6 +4,7 @@ RUN echo "CACHEBUST_TRIGGER: 2026-01-17 16:30"
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
+# CACHEBUST: Force Rebuild 2026-01-17 v2
 COPY frontend/ .
 RUN npm run build
 

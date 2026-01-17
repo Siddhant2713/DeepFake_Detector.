@@ -6,88 +6,61 @@ const Timeline = ({ duration, segments, currentTime, onSeek }) => {
 
     // Timeline Rendering Logic
     const draw = (ctx, width, height) => {
-        // Clear background
-        ctx.fillStyle = '#1A1A1A';
-        ctx.fillRect(0, 0, width, height);
+        // Clear (transparent)
+        ctx.clearRect(0, 0, width, height);
 
-        // 1. Draw Time Scale
-        const tickInterval = Math.max(1, Math.floor(duration / 20)); // Adaptive ticks
+        // Define Bar Area (centered vertically)
+        const barHeight = 8;
+        const barY = (height - 20) / 2; // Reserve 20px for labels at bottom
 
-        for (let i = 0; i <= duration; i += tickInterval) {
-            const x = (i / duration) * width;
-
-            // Major tick every 5 intervals
-            const isMajor = i % (tickInterval * 5) === 0;
-            const tickHeight = isMajor ? 12 : 6;
-
-            ctx.strokeStyle = isMajor ? '#666666' : '#444444';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(x, height - tickHeight);
-            ctx.lineTo(x, height);
-            ctx.stroke();
-
-            // Time label for major ticks
-            if (isMajor) {
-                const mins = Math.floor(i / 60);
-                const secs = Math.floor(i % 60);
-                const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-
-                ctx.fillStyle = '#999999';
-                ctx.font = '10px "IBM Plex Mono"';
-                ctx.textAlign = 'center';
-                ctx.fillText(timeStr, x, height - 16);
-            }
-        }
+        // 1. Draw Base Bar
+        ctx.fillStyle = '#1F2937';
+        ctx.beginPath();
+        ctx.roundRect(0, barY, width, barHeight, 4);
+        ctx.fill();
 
         // 2. Draw Manipulation Segments (Red Zones)
-        segments.forEach((seg, idx) => {
-            // Parse time "HH:MM:SS" -> seconds
+        segments.forEach((seg) => {
             const parseTime = (t) => {
                 const parts = t.split(':').map(Number);
                 if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
                 return 0;
             };
-            const startStr = parseTime(seg.start_time);
-            const endStr = parseTime(seg.end_time);
+            const startSec = parseTime(seg.start_time);
+            const endSec = parseTime(seg.end_time);
 
-            const startX = (startStr / duration) * width;
-            const endX = (endStr / duration) * width;
-            const segWidth = endX - startX;
+            const startX = (startSec / duration) * width;
+            const endX = (endSec / duration) * width;
+            const segWidth = Math.max(endX - startX, 2); // Min 2px visibility
 
-            // Background
-            ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
-            ctx.fillRect(startX, 0, segWidth, height - 20);
-
-            // Top Border
-            ctx.strokeStyle = '#E74C3C';
-            ctx.lineWidth = 2;
+            ctx.fillStyle = '#EF4444';
             ctx.beginPath();
-            ctx.moveTo(startX, 0);
-            ctx.lineTo(endX, 0);
-            ctx.stroke();
-
-            // Label
-            ctx.fillStyle = '#E74C3C';
-            ctx.font = 'bold 9px "IBM Plex Mono"';
-            ctx.textAlign = 'left';
-            // Ensure text fits
-            if (segWidth > 50) {
-                ctx.fillText(`ANOMALY ${idx + 1}`, startX + 4, 12);
-            }
+            // Match rounded corners if at edges, otherwise rect
+            ctx.roundRect(startX, barY, segWidth, barHeight, 4);
+            ctx.fill();
         });
 
-        // 3. Draw Current Time Indicator (Blue Line)
+        // 3. Draw Current Time Indicator (Simple vertical line or small handle)
         const currentX = (currentTime / duration) * width;
-        ctx.strokeStyle = '#5DADE2';
-        ctx.lineWidth = 2;
-        ctx.shadowColor = 'rgba(93, 173, 226, 0.4)';
-        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#3B82F6';
         ctx.beginPath();
-        ctx.moveTo(currentX, 0);
-        ctx.lineTo(currentX, height - 20);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
+        ctx.arc(currentX, barY + barHeight / 2, 6, 0, 2 * Math.PI); // Simple circle handle
+        ctx.fill();
+
+        // 4. Time Labels (0s, End, and maybe mid points)
+        ctx.fillStyle = '#9CA3AF';
+        ctx.font = '12px Inter';
+        ctx.textAlign = 'left';
+        ctx.fillText("0s", 0, height - 2);
+
+        ctx.textAlign = 'right';
+        ctx.fillText(formatTime(duration), width, height - 2);
+    };
+
+    const formatTime = (seconds) => {
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${m}m ${s}s`;
     };
 
     // Handle Resize & Drawing
@@ -119,7 +92,7 @@ const Timeline = ({ duration, segments, currentTime, onSeek }) => {
         observer.observe(container);
 
         return () => observer.disconnect();
-    }, [duration, segments, currentTime]); // Re-draw on updates
+    }, [duration, segments, currentTime]);
 
     // Click to Seek
     const handleCanvasClick = (e) => {
@@ -130,30 +103,8 @@ const Timeline = ({ duration, segments, currentTime, onSeek }) => {
     };
 
     return (
-        <div ref={containerRef} className="w-full bg-neutral-900 border-t border-neutral-700 p-4">
-            <div className="timeline-container h-[80px] w-full bg-[#1A1A1A] relative cursor-pointer group">
-                <canvas
-                    ref={canvasRef}
-                    onClick={handleCanvasClick}
-                    className="w-full h-full block"
-                />
-            </div>
-
-            {/* Legend */}
-            <div className="flex gap-6 text-[10px] text-neutral-500 font-mono tracking-wide justify-center mt-3">
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-1 bg-forensics-blue rounded-sm"></div>
-                    <span>Current Position</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-3 bg-forensics-red/30 border border-forensics-red rounded-sm"></div>
-                    <span>Detected Manipulation</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-3 bg-forensics-green/30 border border-forensics-green rounded-sm"></div>
-                    <span>Verified Authentic</span>
-                </div>
-            </div>
+        <div ref={containerRef} className="w-full h-12 cursor-pointer mt-4" onClick={handleCanvasClick}>
+            <canvas ref={canvasRef} className="w-full h-full block" />
         </div>
     );
 };

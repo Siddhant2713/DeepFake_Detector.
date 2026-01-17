@@ -3,7 +3,7 @@ FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
-# CACHEBUST_FRONTEND: 2026-01-17 16:15
+# CACHEBUST_FRONTEND: 2026-01-17 16:25
 COPY frontend/ .
 RUN npm run build
 

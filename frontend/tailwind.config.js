@@ -7,17 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        'forensics-red': '#E74C3C',
-        'forensics-red-dark': '#C0392B',
-        'forensics-green': '#27AE60',
-        'forensics-blue': '#5DADE2',
-        'forensics-blue-dark': '#34495E',
-        'neutral-950': '#0D0D0D', // Primary bg
-        'neutral-900': '#161616', // Secondary bg
-        'neutral-850': '#1E1E1E', // Tertiary bg
-        'neutral-800': '#2A2A2A', // Border light
-        'neutral-700': '#333333', // Border medium
-        'neutral-600': '#4A4A4A', // Border strong
+        'bg-main': '#0B0F1A',
+        'bg-surface': '#121826',
+        'border-main': '#1F2937',
+        'primary': '#3B82F6',
+        'danger': '#EF4444',
+        'text-primary': '#E5E7EB',
+        'text-secondary': '#9CA3AF',
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui'],
